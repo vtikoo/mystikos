@@ -14,6 +14,7 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <sys/prctl.h>
 #include <sys/resource.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -3298,7 +3299,18 @@ long myst_syscall(long n, long params[6])
         case SYS__sysctl:
             break;
         case SYS_prctl:
-            break;
+        {
+            int option = (int)x1;
+            _strace(n,"option=%d\n", option);
+            int ret = -EINVAL;
+
+            if (option == PR_SET_SPECULATION_CTRL)
+            {
+                ret = -ENXIO;
+            }
+
+            BREAK(_return(n, ret));
+        }
         case SYS_arch_prctl:
             break;
         case SYS_adjtimex:

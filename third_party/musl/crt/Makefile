@@ -54,5 +54,5 @@ NEWFILES += src/stdio/__vfprintf_chk.c
 $(MUSLSRC):
 	mkdir -p $(BUILDDIR)
 	git clone git://git.musl-libc.org/musl -b v1.2.0 $(MUSLSRC)
-	( cd $(MUSLSRC); git apply $(PATCHDIR)/patch.diff )
+	( cd $(MUSLSRC); git apply $(PATCHDIR)/patch.diff; git apply $(PATCHDIR)/disable-synccall-in-setrlimit.diff )
 	$(foreach i, $(NEWFILES), ( cd $(MUSLSRC); git add $(i) ); $(NL) )
