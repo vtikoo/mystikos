@@ -118,13 +118,13 @@ void oe_notify_debugger_library_unload(oe_debug_module_t* module)
 
 oe_result_t oe_debug_notify_library_loaded(oe_debug_module_t* module)
 {
-    oe_notify_debugger_library_load(module);
+    oe_debug_notify_module_loaded(module);
     return OE_OK;
 }
 
 oe_result_t oe_debug_notify_library_unloaded(oe_debug_module_t* module)
 {
-    oe_notify_debugger_library_unload(module);
+    oe_debug_notify_module_unloaded(module);
     return OE_OK;
 }
 
@@ -156,6 +156,8 @@ long myst_add_symbol_file_by_path(
         di->base.path_length = strlen(di->base.path);
         di->base.base_address = text_data;
         di->base.size = text_size;
+        printf("adding: %s ,enclave: %p \n", di->__buf, _enclave);
+        di->base.enclave = (struct _debug_enclave_t*)_enclave;
 
         if (notify)
         {
@@ -272,6 +274,8 @@ long myst_tcall_add_symbol_file(
         di->base.path_length = strlen(di->base.path);
         di->base.base_address = (const void*)text_data;
         di->base.size = text_size;
+        printf("adding: %s ,enclave: %p \n", di->__buf, _enclave);
+        di->base.enclave = (struct _debug_enclave_t*)_enclave;
 
         if (notify)
         {

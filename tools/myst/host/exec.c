@@ -66,8 +66,6 @@ static size_t _count_args(const char* args[])
     return n;
 }
 
-static oe_enclave_t* _enclave;
-
 /* the address of this is eventually passed to futex (uaddr argument) */
 static __thread int _thread_event;
 

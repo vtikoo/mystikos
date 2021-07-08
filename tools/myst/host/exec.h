@@ -7,6 +7,8 @@
 #include <myst/args.h>
 #include <myst/options.h>
 
+oe_enclave_t* _enclave;
+
 int exec_action(int argc, const char* argv[], const char* envp[]);
 
 int exec_launch_enclave(

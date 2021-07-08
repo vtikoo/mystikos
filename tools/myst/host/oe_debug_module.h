@@ -32,4 +32,8 @@ OE_STATIC_ASSERT(OE_OFFSETOF(oe_debug_module_t, base_address) == 40);
 OE_STATIC_ASSERT(OE_OFFSETOF(oe_debug_module_t, size) == 48);
 OE_STATIC_ASSERT(OE_OFFSETOF(oe_debug_module_t, enclave) == 56);
 
+OE_EXPORT oe_result_t oe_debug_notify_module_loaded(oe_debug_module_t* module);
+
+OE_EXPORT oe_result_t
+oe_debug_notify_module_unloaded(oe_debug_module_t* module);
 #endif /* _OE_DEBUG_MODULE_H */
