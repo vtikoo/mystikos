@@ -5,8 +5,11 @@ TOP=$(abspath $(CURDIR)/../..)
 BUILDDIR=${TOP}/build
 
 URL=https://github.com/openenclave/openenclave
-
 BRANCH=mystikos.v4
+
+OPENENCLAVE_INSTALL_PREFIX=$(BUILDDIR)/openenclave
+OPENENCLAVE_SRC = $(CURDIR)/openenclave
+OPENENCLAVE_BUILD = $(CURDIR)/openenclave/build
 
 # get the hash of the remote github repository (for the given branch)
 HASH=$(shell git ls-remote $(URL) -b $(BRANCH) | cut -f1 )
@@ -23,8 +26,9 @@ endif
 
 $(BUILDDIR)/include/openenclave:
 ifeq ($(CACHE_CHECK),)
-	test -e $(CURDIR)/openenclave || $(MAKE) submodule
 	$(MAKE) openenclave
+	$(MAKE) configure_oe
+	$(MAKE) install_oe
 else
 	$(MAKE) fetch_oecache
 endif
@@ -41,15 +45,9 @@ $(TOP)/build/bin/myst-gdb:
 	rm -f $(BUILDDIR)/bin/myst-gdb
 	ln -s $(BUILDDIR)/openenclave/bin/oegdb $(BUILDDIR)/bin/myst-gdb
 
-##==============================================================================
-##
-## submodule:
-##
-##==============================================================================
-
 FETCH_SUBMODULE = git submodule update --init --progress
 
-submodule:
+openenclave:
 	git clone $(URL) -b $(BRANCH)
 	( cd openenclave; $(FETCH_SUBMODULE) tools/oeedger8r-cpp )
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/musl/musl )
@@ -57,21 +55,6 @@ submodule:
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/openssl/openssl )
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/openssl/intel-sgx-ssl )
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/snmalloc )
-
-##==============================================================================
-##
-## openenclave:
-##
-##==============================================================================
-
-OPENENCLAVE_INSTALL_PREFIX=$(BUILDDIR)/openenclave
-
-OPENENCLAVE_SRC = $(CURDIR)/openenclave
-OPENENCLAVE_BUILD = $(CURDIR)/openenclave/build
-
-.PHONY: openenclave
-
-openenclave: configure_oe install_oe
 
 configure_oe: $(OPENENCLAVE_BUILD)/Makefile
 
