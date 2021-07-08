@@ -23,7 +23,7 @@ endif
 
 $(BUILDDIR)/include/openenclave:
 ifeq ($(CACHE_CHECK),)
-	test -e openenclave || $(MAKE) submodule
+	test -e $(CURDIR)/openenclave || $(MAKE) submodule
 	$(MAKE) openenclave
 else
 	$(MAKE) fetch_oecache
@@ -71,13 +71,7 @@ OPENENCLAVE_BUILD = $(CURDIR)/openenclave/build
 
 .PHONY: openenclave
 
-# Only install dependencies if $(OPENENCLAVE_BUILD) does not exit.
-DEPENDENCY_TARGET = $(OPENENCLAVE_BUILD)/dependency_target
-
-openenclave: $(DEPENDENCY_TARGET) configure_oe install_oe
-
-$(DEPENDENCY_TARGET):
-	mkdir -p $(OPENENCLAVE_BUILD)
+openenclave: configure_oe install_oe
 
 configure_oe: $(OPENENCLAVE_BUILD)/Makefile
 
@@ -97,7 +91,6 @@ CMAKE_OPTS += -DCMAKE_INSTALL_PREFIX=$(OPENENCLAVE_INSTALL_PREFIX)
 $(OPENENCLAVE_BUILD)/Makefile:
 	rm -rf $(OPENENCLAVE_BUILD)
 	mkdir -p $(OPENENCLAVE_BUILD)
-	touch $(DEPENDENCY_TARGET)
 	( cd $(OPENENCLAVE_BUILD); cmake $(CMAKE_OPTS) $(OPENENCLAVE_SRC) )
 
 install_oe:
