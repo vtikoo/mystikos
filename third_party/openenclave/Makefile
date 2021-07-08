@@ -26,7 +26,7 @@ endif
 
 $(BUILDDIR)/include/openenclave:
 ifeq ($(CACHE_CHECK),)
-	$(MAKE) openenclave
+	$(MAKE) src
 	$(MAKE) configure_oe
 	$(MAKE) install_oe
 else
@@ -47,7 +47,8 @@ $(TOP)/build/bin/myst-gdb:
 
 FETCH_SUBMODULE = git submodule update --init --progress
 
-openenclave:
+src:
+	rm -rf openenclave
 	git clone $(URL) -b $(BRANCH)
 	( cd openenclave; $(FETCH_SUBMODULE) tools/oeedger8r-cpp )
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/musl/musl )
@@ -88,25 +89,9 @@ endif
 	rm -f $(TOP)/build/bin/myst-gdb
 	ln -s $(TOP)/build/openenclave/bin/oegdb $(TOP)/build/bin/myst-gdb
 
-##==============================================================================
-##
-## clean:
-## distclean:
-##
-##==============================================================================
-
 clean:
 	rm -rf $(TOP)/build/openenclave
 	rm -f $(TOP)/build/bin/myst-gdb
 
 distclean: clean
 	rm -rf openenclave
-
-cleandeps:
-	rm -f $(DEPENDENCY_TARGET)
-
-tests:
-
-force:
-	rm -rf $(BUILDDIR)/include/openenclave
-	$(MAKE)
