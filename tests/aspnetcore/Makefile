@@ -19,8 +19,10 @@ endif
 
 all: appdir rootfs ext2fs
 
+# alpine release build: vtikoo/aspnetcore-build:smaller
+# ubuntu debug build: vtikoo/aspnetcore:ubuntu
 appdir:
-	$(APPBUILDER) -i vtikoo/aspnetcore-build:smaller
+	$(APPBUILDER) Dockerfile
 
 rootfs: appdir
 	$(MYST) mkcpio appdir rootfs
@@ -44,6 +46,12 @@ run-ext2:
 run-ext2-gdb:
 	$(MYST_GDB) --args $(MYST) exec ext2fs --roothash=roothash \
 	--memory-size $(HEAP_SIZE) \
+	/aspnetcore/.dotnet/dotnet test \
+	/aspnetcore/src/Middleware/Session/test/Microsoft.AspNetCore.Session.Tests.csproj $(OPTS)
+
+run-ext2-lldb:
+	$(MYST_LLDB) -- $(MYST) exec ext2fs --roothash=roothash \
+	--memory-size $(HEAP_SIZE)  --report-native-tids \
 	/aspnetcore/.dotnet/dotnet test \
 	/aspnetcore/src/Middleware/Session/test/Microsoft.AspNetCore.Session.Tests.csproj $(OPTS)
 
