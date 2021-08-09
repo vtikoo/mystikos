@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/prctl.h>
 #include <syscall.h>
 #include <time.h>
 
@@ -608,6 +609,8 @@ static void* _thread_func(void* arg)
 {
     uint64_t cookie = (uint64_t)arg;
     uint64_t event = (uint64_t)&_thread_event;
+
+    prctl(PR_SET_NAME, "myst-thread");
 
     if (myst_run_thread(cookie, event, (pid_t)syscall(SYS_gettid)) != 0)
     {
