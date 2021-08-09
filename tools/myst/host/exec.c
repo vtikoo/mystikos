@@ -12,6 +12,7 @@
 #include <poll.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/user.h>
@@ -79,6 +80,8 @@ static void* _thread_func(void* arg)
     pid_t target_tid = (pid_t)syscall(SYS_gettid);
     oe_result_t res;
     long retval = -1;
+
+    prctl(PR_SET_NAME, "myst-thread");
 
     res = myst_run_thread_ecall(_enclave, &retval, cookie, event, target_tid);
 

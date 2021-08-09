@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/prctl.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
@@ -408,6 +409,8 @@ static int _main(int argc, const char* argv[], const char* envp[])
         fprintf(stderr, USAGE, argv[0]);
         return 1;
     }
+
+    prctl(PR_SET_NAME, "myst-main");
 
     if (strcmp(argv[1], "exec") == 0 || strcmp(argv[1], "exec-sgx") == 0)
     {

@@ -5,11 +5,14 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/prctl.h>
 
 static pthread_t _clock_thread;
 
 static void* _host_clock_task(void* args)
 {
+    prctl(PR_SET_NAME, "myst-host-clock");
+
     struct timespec tp, sleep_tp;
     struct clock_ctrl* ctrl = (struct clock_ctrl*)args;
 
