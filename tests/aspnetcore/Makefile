@@ -17,6 +17,8 @@ ifdef MEMCHK
 OPTS += --memcheck
 endif
 
+OPTS += --nobrk
+
 all: appdir rootfs ext2fs
 
 # alpine release build: vtikoo/aspnetcore-build:smaller
