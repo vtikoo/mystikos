@@ -4,6 +4,7 @@ include $(TOP)/defs.mak
 APPBUILDER=$(TOP)/scripts/appbuilder
 APPNAME=corerun
 HEAP_SIZE="2G"
+TEST=/aspnetcore/src/Middleware/Session/test/Microsoft.AspNetCore.Session.Tests.csproj
 
 ifdef STRACE
 OPTS += --strace
@@ -40,34 +41,34 @@ clean:
 #			dev targets			 #
 ##################################
 run-ext2:
-	$(MYST) exec ext2fs --roothash=roothash \
-	--memory-size $(HEAP_SIZE) --report-native-tids \
+	$(MYST_EXEC) ext2fs --roothash=roothash \
+	--memory-size $(HEAP_SIZE) $(OPTS) \
 	/aspnetcore/.dotnet/dotnet test \
-	/aspnetcore/src/Middleware/Session/test/Microsoft.AspNetCore.Session.Tests.csproj $(OPTS)
+	$(TEST) -v diag
 
 run-ext2-gdb:
-	$(MYST_GDB) --args $(MYST) exec ext2fs --roothash=roothash \
-	--memory-size $(HEAP_SIZE) \
+	$(MYST_GDB) --args $(MYST_EXEC) ext2fs --roothash=roothash \
+	--memory-size $(HEAP_SIZE) $(OPTS) --report-native-tids \
 	/aspnetcore/.dotnet/dotnet test \
-	/aspnetcore/src/Middleware/Session/test/Microsoft.AspNetCore.Session.Tests.csproj $(OPTS)
+	$(TEST) -v diag
 
 run-ext2-lldb:
-	$(MYST_LLDB) -- $(MYST) exec ext2fs --roothash=roothash \
+	$(MYST_LLDB) -- $(MYST_EXEC) ext2fs --roothash=roothash \
 	--memory-size $(HEAP_SIZE)  --report-native-tids \
 	/aspnetcore/.dotnet/dotnet test \
-	/aspnetcore/src/Middleware/Session/test/Microsoft.AspNetCore.Session.Tests.csproj $(OPTS)
+	$(TEST) $(OPTS)
 
 run-cpio:
-	$(MYST) exec rootfs \
+	$(MYST_EXEC) rootfs \
 	--memory-size $(HEAP_SIZE) --report-native-tids \
 	/aspnetcore/.dotnet/dotnet test \
-	/aspnetcore/src/Middleware/Session/test/Microsoft.AspNetCore.Session.Tests.csproj $(OPTS)
+	$(TEST) $(OPTS)
 
 run-cpio-gdb:
-	$(MYST_GDB) --args $(MYST) exec rootfs \
+	$(MYST_GDB) --args $(MYST_EXEC) rootfs \
 	--memory-size $(HEAP_SIZE) --report-native-tids \
 	/aspnetcore/.dotnet/dotnet test \
-	/aspnetcore/src/Middleware/Session/test/Microsoft.AspNetCore.Session.Tests.csproj $(OPTS)
+	$(TEST) $(OPTS)
 
 ct:
 	sudo rm -fr /tmp/myst*
