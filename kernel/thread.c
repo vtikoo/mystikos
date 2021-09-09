@@ -1073,6 +1073,12 @@ long myst_run_thread(uint64_t cookie, uint64_t event, pid_t target_tid)
     void* stack = thread->entry_stack;
     size_t stack_size = thread->entry_stack_size;
     uint64_t stack_end = (uint64_t)stack + stack_size;
+
+    myst_eprintf(
+        "myst_run_thread pid=%d tid=%d target_tid=%d\n",
+        thread->process->pid,
+        thread->tid,
+        target_tid);
     ECHECK(myst_call_on_stack((void*)stack_end, _run_thread, &arg));
 
     myst_unregister_stack(stack, stack_size);
