@@ -52,6 +52,16 @@ run-ext2-gdb:
 	/aspnetcore/.dotnet/dotnet test \
 	$(TEST) -v diag
 
+run-ext2-gdb2:
+	$(MYST_GDB) --args $(MYST_EXEC) ext2fs --roothash=roothash \
+	--memory-size $(HEAP_SIZE) $(OPTS) --report-native-tids \
+	/aspnetcore/.dotnet/dotnet exec \
+	/aspnetcore/.dotnet/sdk/6.0.100-preview.2.21118.6/MSBuild.dll \
+	-maxcpucount -verbosity:diag -restore -target:VSTest \
+	-nodereuse:false \
+	-nologo \
+	/aspnetcore/src/Middleware/Session/test/Microsoft.AspNetCore.Session.Tests.csproj
+
 run-ext2-lldb:
 	$(MYST_LLDB) -- $(MYST_EXEC) ext2fs --roothash=roothash \
 	--memory-size $(HEAP_SIZE)  --report-native-tids \
