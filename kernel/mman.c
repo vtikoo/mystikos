@@ -644,6 +644,12 @@ static int _munmap(myst_mman_t* mman, void* addr, size_t length)
         memset(addr, 0xDD, length);
 #endif
 
+    if (__myst_kernel_args.memcheck)
+    {
+        _MMAN_MPROTECT_PAGES(mman, addr, length, MYST_PROT_WRITE)
+        memset(addr, 0xEE, length);
+    }
+
     _MMAN_MPROTECT_PAGES(mman, addr, length, MYST_PROT_NONE)
 
     if (!_mman_is_sane(mman))
@@ -1589,6 +1595,12 @@ int myst_mman_mremap(
         if (mman->scrub)
             memset((void*)new_end, 0xDD, old_size - new_size);
 #endif
+        if (__myst_kernel_args.memcheck)
+        {
+            _MMAN_MPROTECT_PAGES(
+                mman, (void*)new_end, old_size - new_size, MYST_PROT_WRITE)
+            memset((void*)new_end, 0xEE, old_size - new_size);
+        }
 
         _MMAN_SET_PAGES_PROT(mman, new_end, old_size - new_size, MYST_PROT_NONE)
     }
