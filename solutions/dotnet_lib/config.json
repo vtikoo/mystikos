@@ -13,5 +13,6 @@
         "DOTNET_CLI_HOME=/",
         "COMPlus_EnableDiagnostics=0"
     ],
+    "ThreadStackSize": "2m",
     "NoBrk": 1
 }

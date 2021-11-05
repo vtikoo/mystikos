@@ -18,16 +18,18 @@ rootfs: appdir
 	$(MYST) mkext2 appdir rootfs
 
 run:
-	$(MYST_EXEC) $(OPTS) rootfs /bin/echo --app-config-path config.json \
+	$(MYST_EXEC) $(OPTS) rootfs --app-config-path config.json \
 	/dotnet-lib-debug/testhost/net5.0-Linux-Debug-x64/dotnet \
-	test \
+	exec \
+	/dotnet-lib-debug/testhost/net5.0-Linux-Debug-x64/sdk/5.0.401/vstest.console.dll \
 	/dotnet-lib-debug/System.ValueTuple.Tests/net5.0-Debug/System.ValueTuple.Tests.dll
 
 lldb:
-	$(MYST_LLDB) -- $(MYST_EXEC) $(OPTS) rootfs $(OPTS) \
+	$(MYST_LLDB) -- $(MYST_EXEC) $(OPTS) rootfs \
 	--app-config-path config.json --report-native-tids \
 	/dotnet-lib-debug/testhost/net5.0-Linux-Debug-x64/dotnet \
-	test \
+	exec \
+	/dotnet-lib-debug/testhost/net5.0-Linux-Debug-x64/sdk/5.0.401/vstest.console.dll \
 	/dotnet-lib-debug/System.ValueTuple.Tests/net5.0-Debug/System.ValueTuple.Tests.dll
 
 clean:
