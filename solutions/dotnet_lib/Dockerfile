@@ -5,9 +5,15 @@ WORKDIR /build
 RUN git clone --depth 1 --single-branch --branch v5.0.11 https://github.com/dotnet/runtime.git
 WORKDIR /build/runtime/
 
+RUN git fetch origin main \
+    # Checkout tagged runtime branch
+    && git checkout v5.0.11 \
+    # Include -keepnativesymbols commit
+    && git cherry-pick -n 2f1694ea116cc9819644382861690f17f1c8517b
 # Build clr+libs+libs.tests in Debug
 RUN ./build.sh -subset clr+libs+libs.tests \
-    -c Debug -rc Debug -lc Debug 
+    -keepnativesymbols true \
+    -c Debug -rc Debug -lc Debug
 
 # To run all library tests
 # RUN ./build.sh -subset libs.tests -test -testnobuild \
