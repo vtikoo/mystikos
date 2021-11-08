@@ -309,9 +309,20 @@ void cleanup_alt_stack()
 
 static void _sigaction_handler(int sig, siginfo_t* si, void* context)
 {
+    /* Unblock signal */
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, sig);
+
+    int ret = pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
+    if (ret != 0)
+        _err("Failed to unblock sig %d, error %d\n", sig, ret);
+
     ucontext_t* ucontext = (ucontext_t*)context;
     mcontext_t* mcontext = &ucontext->uc_mcontext;
     kernel_args.myst_handle_host_signal(si, mcontext);
+    struct stat statbuf;
+    stat("/proc/self", &statbuf);
 }
 
 static void _install_signal_handlers()
