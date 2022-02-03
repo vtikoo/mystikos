@@ -10,6 +10,7 @@
 #include <sys/types.h>
 
 #define MYST_FDMAPPING_USED 0x1ca0597f
+#define MYST_FDMAPPING_POSIX_SHM 0x73a840d4
 
 /*
 defines a file-page to memory-page mapping

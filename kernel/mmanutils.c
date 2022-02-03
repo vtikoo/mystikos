@@ -15,6 +15,7 @@
 #include <myst/fdtable.h>
 #include <myst/file.h>
 #include <myst/kernel.h>
+#include <myst/list.h>
 #include <myst/malloc.h>
 #include <myst/mman.h>
 #include <myst/mmanutils.h>
@@ -50,6 +51,27 @@ typedef struct vectors
     uint32_t* pids;
     size_t pids_count;
 } vectors_t;
+
+typedef struct proc_and_fd
+{
+    myst_list_node_t base;
+    pid_t pid;
+    int fd;
+} proc_and_fd_t;
+
+typedef struct shared_mapping
+{
+    myst_list_node_t base;
+    char path[PATH_MAX];
+    off_t offset;
+    void* addr;
+    size_t length;
+    int nusers;
+    myst_list_t sharers;
+} shared_mapping_t;
+
+static myst_list_t _shared_mappings;
+static myst_spinlock_t _shared_mappings_lock;
 
 MYST_INLINE void _rlock(bool* locked)
 {
@@ -237,7 +259,12 @@ static void _free_fdmappings_pathnames_atexit(void)
     myst_atexit(_free_fdmappings_pathnames, NULL);
 }
 
-static int _add_file_mapping(int fd, off_t offset, void* addr, size_t length)
+static int _add_file_mapping(
+    int fd,
+    off_t offset,
+    void* addr,
+    size_t length,
+    bool is_posix_shm_request)
 {
     int ret = 0;
     int dupfd;
@@ -269,7 +296,7 @@ static int _add_file_mapping(int fd, off_t offset, void* addr, size_t length)
         ERAISE(-ENOMEM);
 
     /* duplicate fd */
-    if ((dupfd = myst_syscall_dup(fd)) == -1)
+    if (!is_posix_shm_request && (dupfd = myst_syscall_dup(fd)) == -1)
         ERAISE(dupfd);
 
     ECHECK(myst_round_up(length, PAGE_SIZE, &length));
@@ -294,8 +321,15 @@ static int _add_file_mapping(int fd, off_t offset, void* addr, size_t length)
                 p->pathname = NULL;
             }
 
-            p->used = MYST_FDMAPPING_USED;
-            p->fd = dupfd;
+            if (is_posix_shm_request)
+            {
+                p->used = MYST_FDMAPPING_POSIX_SHM;
+            }
+            else
+            {
+                p->used = MYST_FDMAPPING_USED;
+                p->fd = dupfd;
+            }
             p->offset = off;
             myst_refstr_ref(p->pathname = pathname);
             off += PAGE_SIZE;
@@ -319,7 +353,8 @@ static ssize_t _map_file_onto_memory(
     int fd,
     off_t offset,
     void* addr,
-    size_t length)
+    size_t length,
+    bool is_posix_shm_request)
 {
     ssize_t ret = 0;
     ssize_t bytes_read = 0;
@@ -359,7 +394,7 @@ static ssize_t _map_file_onto_memory(
         }
     }
 
-    ECHECK(_add_file_mapping(fd, offset, addr, length));
+    ECHECK(_add_file_mapping(fd, offset, addr, length, is_posix_shm_request));
 
     ret = bytes_read;
 
@@ -440,7 +475,7 @@ long myst_mmap(
         ECHECK(
             myst_mman_mprotect(&_mman, addr, length, prot | MYST_PROT_WRITE));
 
-        ECHECK(_map_file_onto_memory(fd, offset, addr, length));
+        ECHECK(_map_file_onto_memory(fd, offset, addr, length, false));
 
         if (!(prot & MYST_PROT_WRITE))
             ECHECK(myst_mman_mprotect(&_mman, addr, length, prot));
@@ -449,6 +484,87 @@ long myst_mmap(
     }
     else
     {
+        /* Handle POSIX Shared Mapping */
+        shared_mapping_t* new_sm = NULL;
+        bool is_posix_shm_request = false;
+        if (fd >= 0 && !addr && (flags & MAP_SHARED))
+        {
+            char* pn;
+            if (!(pn = calloc(1, PATH_MAX)))
+                ERAISE(-ENOMEM);
+
+            int tmp_ret = 0;
+            if (!(tmp_ret = _fd_to_pathname(fd, pn)))
+            {
+                free(pn);
+                ERAISE(tmp_ret);
+            }
+
+            if (strncmp(pn, "/dev/shm/", 9) == 0)
+            {
+                is_posix_shm_request = true;
+
+                myst_spin_lock(&_shared_mappings_lock);
+                shared_mapping_t* sm = (shared_mapping_t*)_shared_mappings.head;
+                // Check for existing mapping
+                while (sm)
+                {
+                    if ((strcmp(pn, sm->path) == 0) && offset == sm->offset &&
+                        length == sm->length)
+                    {
+                        sm->nusers++;
+                        {
+                            proc_and_fd_t* pfd;
+                            if (!(pfd = calloc(1, sizeof(proc_and_fd_t))))
+                            {
+                                free(pn);
+                                myst_spin_unlock(&_shared_mappings_lock);
+                                ERAISE(-ENOMEM);
+                            }
+                            pfd->pid = myst_process_self()->pid;
+                            pfd->fd = fd; // TODO: should be duplicated fd
+                            myst_list_append(&new_sm->sharers, &pfd->base);
+                        }
+
+                        free(pn);
+                        myst_spin_unlock(&_shared_mappings_lock);
+                        return (long)sm->addr;
+                    }
+
+                    sm = (shared_mapping_t*)sm->base.next;
+                }
+
+                // Create a new shared mapping
+                {
+                    if (!(new_sm = calloc(1, sizeof(shared_mapping_t))))
+                    {
+                        free(pn);
+                        myst_spin_unlock(&_shared_mappings_lock);
+                        ERAISE(-ENOMEM);
+                    }
+                    new_sm->offset = offset;
+                    new_sm->length = length;
+                    new_sm->nusers = 1;
+                    myst_strlcpy(new_sm->path, pn, PATH_MAX);
+                    {
+                        proc_and_fd_t* pfd;
+                        if (!(pfd = calloc(1, sizeof(proc_and_fd_t))))
+                        {
+                            free(pn);
+                            myst_spin_unlock(&_shared_mappings_lock);
+                            ERAISE(-ENOMEM);
+                        }
+                        pfd->pid = myst_process_self()->pid;
+                        pfd->fd = fd; // TODO: should be duplicated fd
+                        myst_list_append(&new_sm->sharers, &pfd->base);
+                    }
+                    myst_list_append(&_shared_mappings, &new_sm->base);
+                }
+                myst_spin_unlock(&_shared_mappings_lock);
+                free(pn);
+            }
+        }
+
         int tflags = 0;
 
         if (flags & MYST_MAP_FIXED)
@@ -481,10 +597,16 @@ long myst_mmap(
                     ERAISE(-EINVAL);
             }
 
-            ECHECK(_map_file_onto_memory(fd, offset, (void*)ret, length));
+            ECHECK(_map_file_onto_memory(
+                fd, offset, (void*)ret, length, is_posix_shm_request));
 
             if (!(prot & MYST_PROT_WRITE))
                 ECHECK(myst_mman_mprotect(&_mman, (void*)ret, length, prot));
+
+            if (new_sm)
+            {
+                new_sm->addr = (void*)ret;
+            }
         }
     }
 
@@ -667,6 +789,51 @@ int myst_munmap(void* addr, size_t length)
     int ret = 0;
     fdlist_t* head = NULL;
 
+    /* Check if unmapping shared mapping */
+    myst_spin_lock(&_shared_mappings_lock);
+    {
+        shared_mapping_t* sm = (shared_mapping_t*)_shared_mappings.head;
+        while (sm)
+        {
+            if (addr == sm->addr && length == sm->length)
+            {
+                // write through to backing file
+                myst_msync(sm->addr, sm->length, MS_SYNC);
+
+                // remove from proc_and_fd list
+                proc_and_fd_t* pfd = (proc_and_fd_t*)sm->sharers.head;
+                while (pfd)
+                {
+                    if (pfd->pid == myst_process_self()->pid)
+                    {
+                        myst_list_remove(&sm->sharers, &pfd->base);
+                        // TODO: Also close pfd->fd
+                        free(pfd);
+                        break;
+                    }
+                    pfd = (proc_and_fd_t*)pfd->base.next;
+                }
+
+                if (--sm->nusers > 0)
+                {
+                    myst_spin_unlock(&_shared_mappings_lock);
+                    goto done; // skip rest of munmap
+                }
+                else // For last reference to shared mapping, delete mapping
+                {
+                    myst_list_remove(&_shared_mappings, &sm->base);
+                    free(sm);
+                    // proceed to lower-level munmap procedure
+                    // + cleanup of fdmappings vector
+                    break;
+                }
+            }
+
+            sm = (shared_mapping_t*)sm->base.next;
+        }
+    }
+    myst_spin_unlock(&_shared_mappings_lock);
+
     ECHECK(__myst_munmap(addr, length, &head));
 
     // close file handles outside of mman lock
@@ -708,6 +875,7 @@ int myst_release_process_mappings(pid_t pid)
     if (pid <= 0)
         ERAISE(-EINVAL);
 
+    /* Scan entire pids vector range for process-owned memory */
     {
         uint8_t* addr = (uint8_t*)_mman.map;
         size_t length = ((uint8_t*)_mman.end) - addr;
@@ -755,7 +923,8 @@ int myst_release_process_mappings(pid_t pid)
 
                     myst_fdmapping_t* p = &v.fdmappings[i];
 
-                    if (p->pathname)
+                    if (p->pathname) // TODO: redundant? this is already done in
+                                     // __myst_munmap
                     {
                         myst_refstr_unref(p->pathname);
                         p->pathname = NULL;
@@ -771,7 +940,8 @@ int myst_release_process_mappings(pid_t pid)
 
                         myst_fdmapping_t* p = &v.fdmappings[j];
 
-                        if (p->pathname)
+                        if (p->pathname) // TODO: redundant? this is already
+                                         // done in __myst_munmap
                         {
                             myst_refstr_unref(p->pathname);
                             p->pathname = NULL;
@@ -825,6 +995,54 @@ int myst_release_process_mappings(pid_t pid)
         }
         _runlock(&locked);
     }
+
+    /* Cleanup shared memory related state for this process */
+    myst_spin_unlock(&_shared_mappings_lock);
+    {
+        shared_mapping_t* sm = (shared_mapping_t*)&_shared_mappings.head;
+        while (sm)
+        {
+            bool matched = false;
+            proc_and_fd_t* pfd = (proc_and_fd_t*)sm->sharers.head;
+            while (pfd)
+            {
+                if (pfd->pid == pid)
+                {
+                    myst_list_remove(&sm->sharers, &pfd->base);
+                    // TODO: close pfd->fd;
+                    free(pfd);
+                    matched = true;
+                    break;
+                }
+                pfd = (proc_and_fd_t*)pfd->base.next;
+            }
+
+            if (matched)
+            {
+                if (--sm->nusers > 0)
+                {
+                    // goto next shared mapping
+                    continue;
+                }
+                else
+                {
+                    myst_list_remove(&_shared_mappings, &sm->base);
+                    fdlist_t* head;
+                    ECHECK(__myst_munmap(sm->addr, sm->length, &head));
+                    // close file handles outside of mman lock
+                    _close_file_handles(head);
+
+                    free(sm);
+                }
+            }
+            else
+            {
+                // goto next shared mapping
+                continue;
+            }
+        }
+    }
+    myst_spin_unlock(&_shared_mappings_lock);
 
 done:
 
@@ -934,6 +1152,8 @@ int proc_pid_maps_vcallback(
         {
             for (size_t i = index; i < index + count;)
             {
+                // skip_zero_pids can be probably be used here to speed up the
+                // scanning
                 if (v.pids[i] == (uint32_t)pid)
                 {
                     size_t n = 1;
@@ -1087,24 +1307,68 @@ int myst_msync(void* addr, size_t length, int flags)
         const size_t n = rounded_up_length / PAGE_SIZE;
         uint8_t* page = addr;
 
-        for (size_t i = index; i < index + n; i++)
+        /* Check addr:addr+length belongs to a POSIX shm region */
+        myst_fdmapping_t* fdm = &v.fdmappings[index];
+        if (fdm->used == MYST_FDMAPPING_POSIX_SHM)
         {
-            myst_fdmapping_t* p = &v.fdmappings[i];
+            // search in shared mappings list
+            myst_spin_lock(&_shared_mappings_lock);
+            shared_mapping_t* sm = (shared_mapping_t*)_shared_mappings.head;
+            bool found = false;
+            int self_fd = -1;
+            while (sm)
+            {
+                if ((strcmp(fdm->pathname->data, sm->path) == 0) &&
+                    (off_t)fdm->offset == sm->offset && length == sm->length)
+                {
+                    found = true;
+                    // search sharers list for current process's file handle
+                    proc_and_fd_t* pfd = (proc_and_fd_t*)sm->sharers.head;
+                    while (pfd)
+                    {
+                        if (pfd->pid == myst_process_self()->pid)
+                        {
+                            self_fd = pfd->fd;
+                            break;
+                        }
+                        pfd = (proc_and_fd_t*)pfd->base.next;
+                    }
 
-            if (p->used == MYST_FDMAPPING_USED)
+                    break;
+                }
+                sm = (shared_mapping_t*)sm->base.next;
+            }
+            myst_spin_unlock(&_shared_mappings_lock);
+
+            if (found && self_fd != -1)
             {
                 ECHECK(myst_mman_get_prot(
-                    &_mman, page, PAGE_SIZE, &prot, &consistent));
+                    &_mman, page, rounded_up_length, &prot, &consistent));
                 if (prot & PROT_WRITE)
-                    ECHECK(_sync_file(
-                        p->fd,
-                        p->offset,
-                        page,
-                        length > PAGE_SIZE ? PAGE_SIZE : length));
+                    ECHECK(_sync_file(self_fd, fdm->offset, page, length));
             }
+        }
+        else
+        {
+            for (size_t i = index; i < index + n; i++)
+            {
+                myst_fdmapping_t* p = &v.fdmappings[i];
 
-            page += PAGE_SIZE;
-            length -= PAGE_SIZE;
+                if (p->used == MYST_FDMAPPING_USED)
+                {
+                    ECHECK(myst_mman_get_prot(
+                        &_mman, page, PAGE_SIZE, &prot, &consistent));
+                    if (prot & PROT_WRITE)
+                        ECHECK(_sync_file(
+                            p->fd,
+                            p->offset,
+                            page,
+                            length > PAGE_SIZE ? PAGE_SIZE : length));
+                }
+
+                page += PAGE_SIZE;
+                length -= PAGE_SIZE;
+            }
         }
     }
     _runlock(&locked);

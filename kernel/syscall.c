@@ -3637,6 +3637,7 @@ static long _syscall(void* args_)
                 void* ptr = (void*)ret;
 
                 /* set ownership this mapping to pid */
+                // TODO: don't do this for posix shm requests
                 if (myst_mman_pids_set(ptr, length, pid) != 0)
                     myst_panic("myst_mman_pids_set()");
 

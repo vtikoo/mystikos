@@ -46,7 +46,7 @@ int procfs_setup()
 
     ECHECK(set_overrides_for_special_fs(_procfs));
 
-    if (myst_mkdirhier("/proc", 777) != 0)
+    if (myst_mkdirhier("/proc", 0777) != 0)
     {
         myst_eprintf("cannot create mount point for procfs\n");
         ERAISE(-EINVAL);
@@ -99,7 +99,7 @@ int procfs_pid_setup(pid_t pid)
         ECHECK(myst_snprintf(
             locals->tmp_path, sizeof(locals->tmp_path), "/proc/%d/fd", pid));
 
-        ECHECK(myst_mkdirhier(locals->tmp_path, 777));
+        ECHECK(myst_mkdirhier(locals->tmp_path, 0777));
     }
 
     /* maps entry */
@@ -668,7 +668,7 @@ int create_proc_root_entries()
     {
         myst_vcallback_t v_cb = {0};
         v_cb.open_cb = _sys_vcallback;
-        ECHECK(myst_mkdirhier("/proc/sys/kernel", 777));
+        ECHECK(myst_mkdirhier("/proc/sys/kernel", 0777));
         ECHECK(myst_create_virtual_file(
             _procfs, "/sys/kernel/pid_max", S_IFREG | S_IRUSR, v_cb));
     }
