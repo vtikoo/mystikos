@@ -94,4 +94,5 @@ void myst_mman_lock(void);
 
 void myst_mman_unlock(void);
 
+bool myst_is_posix_shm_request(int fd, int flags);
 #endif /* _MYST_MMANUTILS_H */
