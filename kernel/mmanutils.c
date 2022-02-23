@@ -21,6 +21,7 @@
 #include <myst/mutex.h>
 #include <myst/once.h>
 #include <myst/panic.h>
+#include <myst/posixshmman.h>
 #include <myst/printf.h>
 #include <myst/process.h>
 #include <myst/procfs.h>
