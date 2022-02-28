@@ -15,6 +15,8 @@ else
 	endif
 endif
 
+OPTS += --strace-filter SYS_bind
+
 MPDB=$(TOP)/scripts/mpdb.py
 TESTFILE=tests.passed
 TEST = test_sys
@@ -65,15 +67,12 @@ ifdef MYST_NIGHTLY_TEST
 endif
 
 run-3.8: ext2fs3.8
-	$(MYST_EXEC) $(OPTS) ext2fs3.8 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -v
 	$(foreach i, $(TEST_RUN_INDIVIDUAL_3_8), $(MAKE) one FS=ext2fs3.8 TEST=$(i) $(NL) )
 
 run-3.9: ext2fs3.9
-	$(MYST_EXEC) $(OPTS) ext2fs3.9 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -v
 	$(foreach i, $(TEST_RUN_INDIVIDUAL_3_9), $(MAKE) one FS=ext2fs3.9 TEST=$(i) $(NL) )
 
 run-3.10: ext2fs3.10
-	$(MYST_EXEC) --app-config-path config-3.10.json ext2fs3.10 /cpython/python -m test -f /$(TESTFILE) --timeout 60 -v
 	$(foreach i, $(TEST_RUN_INDIVIDUAL_3_10), $(MAKE) one FS=ext2fs3.10 TEST=$(i) $(NL) )
 
 one: $(FS)
