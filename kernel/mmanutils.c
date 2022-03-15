@@ -508,6 +508,9 @@ int myst_mprotect(const void* addr, const size_t len, const int prot)
     if ((prot & MYST_PROT_GROWSDOWN) && (prot & MYST_PROT_GROWSUP))
         return -EINVAL;
 
+    // we don't support changing protection left of addr
+    assert(!(prot & MYST_PROT_GROWSDOWN));
+
     /* Protection bits are per-process. As we are single process on the host,
      * supporting mprotect for memory shared between two process threads becomes
      * tricky. For now, we bail out and treat mprotect as a NOP.
