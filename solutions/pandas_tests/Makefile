@@ -69,6 +69,9 @@ run-dst: rootfs
 	rm result_test_dst || true
 	$(MYST_EXEC) rootfs $(OPTS) $(PYTEST_CMD) $(TEST_DST) 2>&1 > result_test_dst || true
 	sed -i '$$d' result_test_dst
+	echo "** result_test_dst **"
+	cat result_test_dst
+	echo "*****"
 	diff -B -w result_test_dst expected_test_dst
 
 _run: rootfs
