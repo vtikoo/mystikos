@@ -7,9 +7,11 @@
 #include <myst/assume.h>
 #include <myst/clock.h>
 #include <myst/eraise.h>
+#include <myst/fsgs.h>
 #include <myst/kernel.h>
 #include <myst/mmanutils.h>
 #include <myst/printf.h>
+#include <myst/spinlock.h>
 #include <myst/syscall.h>
 #include <myst/thread.h>
 #include <myst/times.h>
@@ -72,6 +74,8 @@ void myst_times_enter_kernel(long syscall_num)
         &process->process_times.tms_utime, lapsed, __ATOMIC_SEQ_CST);
 }
 
+#define CHECKPOINT_SECS 30
+static myst_spinlock_t _checkpoint_print_lock = MYST_SPINLOCK_INITIALIZER;
 void myst_times_leave_kernel(long syscall_num)
 {
     myst_thread_t* current = myst_thread_self();
@@ -79,6 +83,38 @@ void myst_times_leave_kernel(long syscall_num)
 
     long lapsed =
         myst_lapsed_nsecs(&current->enter_kernel_ts, &current->leave_kernel_ts);
+
+    static struct timespec _last_checkpoint = {0};
+    if (_last_checkpoint.tv_sec == 0 && _last_checkpoint.tv_nsec == 0)
+        _last_checkpoint = current->leave_kernel_ts;
+    double last_checkpoint_secs =
+        ((double)myst_lapsed_nsecs(
+             &_last_checkpoint, &current->leave_kernel_ts) /
+         (double)NANO_IN_SECOND);
+
+    // myst_eprintf("checkpoint_secs= %f\n", last_checkpoint_secs);
+    if (last_checkpoint_secs > CHECKPOINT_SECS)
+    {
+        myst_spin_lock(&_checkpoint_print_lock);
+        if (((double)myst_lapsed_nsecs(
+                 &_last_checkpoint, &current->leave_kernel_ts) /
+             (double)NANO_IN_SECOND) < CHECKPOINT_SECS)
+        {
+            myst_spin_unlock(&_checkpoint_print_lock);
+            goto skip;
+        }
+        void *saved_fs, *base_fs;
+        asm("mov %%fs:0, %0" : "=r"(saved_fs));
+        asm("mov %%gs:0, %0" : "=r"(base_fs));
+        if (saved_fs != base_fs)
+            myst_set_fsbase(base_fs);
+        myst_print_syscall_times("print stats:", 10);
+        if (saved_fs != base_fs)
+            myst_set_fsbase(saved_fs);
+        _last_checkpoint = current->leave_kernel_ts;
+        myst_spin_unlock(&_checkpoint_print_lock);
+    }
+skip:
 
     if (__myst_trace_syscall_times)
     {
@@ -317,6 +353,14 @@ void myst_print_syscall_times(const char* message, size_t count)
             p->ncalls);
     }
 
+    long size;
+    myst_get_peak_memory_usage(&size);
+    myst_eprintf(
+        "=== %s: thread_count= %ld peak memory usage: %5.3lfm current mem usage: %5.3lfm\n",
+        message,
+        myst_get_num_threads(),
+        (double)size / 1048576.0,
+	(double)myst_get_current_memory_usage() / 1048576.0);
     myst_eprintf("\n");
 
     myst_eprintf(COLOR_RESET "\n");

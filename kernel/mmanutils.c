@@ -1008,6 +1008,11 @@ int myst_get_peak_memory_usage(long* size)
     return myst_mman_peak_memory_usage(&_mman, size);
 }
 
+long myst_get_current_memory_usage()
+{
+	return _mman.current_usage;
+}
+
 int myst_get_total_ram(size_t* size)
 {
     return myst_mman_total_size(&_mman, size);

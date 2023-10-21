@@ -6413,8 +6413,8 @@ static long _SYS_shutdown(long n, long params[6])
 
     _strace(n, "sockfd=%d how=%d", sockfd, how);
 
-    if (__myst_kernel_args.perf)
-        myst_print_syscall_times("SYS_shutdown", 10);
+    // if (__myst_kernel_args.perf)
+    //    myst_print_syscall_times("SYS_shutdown", 10);
 
     ret = myst_syscall_shutdown(sockfd, how);
     return (_return(n, ret));
@@ -6428,8 +6428,8 @@ static long _SYS_listen(long n, long params[6])
 
     _strace(n, "sockfd=%d backlog=%d", sockfd, backlog);
 
-    if (__myst_kernel_args.perf)
-        myst_print_syscall_times("SYS_listen", 10);
+    // if (__myst_kernel_args.perf)
+    //    myst_print_syscall_times("SYS_listen", 10);
 
     ret = myst_syscall_listen(sockfd, backlog);
     return (_return(n, ret));

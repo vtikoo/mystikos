@@ -67,6 +67,8 @@ int myst_get_total_ram(size_t* size);
 
 int myst_get_peak_memory_usage(long* size);
 
+long myst_get_current_memory_usage();
+
 int myst_get_free_ram(size_t* size);
 
 int myst_release_process_mappings(pid_t pid);
