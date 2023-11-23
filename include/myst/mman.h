@@ -61,6 +61,12 @@ _Static_assert(sizeof(myst_vad_t) == 40, "");
 /* myst_mman_t data structures and fields */
 typedef struct myst_mman
 {
+    /* Peak memory usage */
+    long peak_usage;
+
+    /* Current memory usage */
+    long current_usage;
+
     /* Magic number (MYST_MMAN_MAGIC) */
     uint64_t magic;
 
@@ -146,6 +152,8 @@ bool myst_mman_is_sane(myst_mman_t* heap);
 
 int myst_mman_total_size(myst_mman_t* mman, size_t* size);
 
+int myst_mman_peak_memory_usage(myst_mman_t* mman, long* size);
+
 int myst_mman_free_size(myst_mman_t* mman, size_t* size);
 
 void myst_mman_dump_vads(myst_mman_t* mman);
@@ -158,5 +166,12 @@ int myst_mman_get_prot(
     size_t len,
     int* prot,
     bool* consistent);
+
+/* return 0 if all memory in this range has the given protection */
+int myst_mman_maccess(
+    myst_mman_t* mman,
+    const void* addr,
+    size_t length,
+    int prot);
 
 #endif /* _MYST_INTERNAL_MMAN_H */

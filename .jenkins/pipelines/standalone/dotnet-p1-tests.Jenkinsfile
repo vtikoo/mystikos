@@ -7,7 +7,7 @@ pipeline {
         timestamps ()
     }
     parameters {
-        choice(name: "UBUNTU_VERSION", choices: ["18.04", "20.04"])
+        choice(name: "UBUNTU_VERSION", choices: ["20.04"])
         string(name: "REPOSITORY", defaultValue: "deislabs/mystikos")
         string(name: "BRANCH", defaultValue: "main", description: "Branch to build")
         string(name: "PULL_REQUEST_ID", defaultValue: "", description: "If you are building a pull request, enter the pull request ID number here. (ex. 789)")
@@ -25,6 +25,7 @@ pipeline {
         TEST_TYPE =         "dotnet"
         LCOV_INFO =         "lcov-${GIT_COMMIT[0..7]}-${TEST_TYPE}.info"
         PACKAGE_INSTALL =   "${UBUNTU_VERSION == '20.04' ? 'Ubuntu-2004' : 'Ubuntu-1804'}_${PACKAGE_NAME}.${PACKAGE_EXTENSION}"
+        // MYST_RELEASE =      "1"
         BUILD_USER = sh(
             returnStdout: true,
             script: 'echo \${USER}'

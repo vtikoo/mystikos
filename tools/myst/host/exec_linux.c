@@ -124,6 +124,9 @@ Options:\n\
                             --strace-filter-pid=101\n\
     --syslog-level=<emerg|alert|crit|err|warn|notice|info|debug>\n\
                          -- Configure kernel's system logger level \n\
+    --perf               -- reports time taken to boot and on shutdown \n\
+                            reports time spent on each syscall \n\
+                            reports peak memory usage of the application \n\
 \n\
 "
 
@@ -166,6 +169,12 @@ static void _get_options(
         cli_getopt(argc, argv, "--etrace", NULL) == 0)
     {
         opts->trace_errors = true;
+    }
+
+    /* Get --crt-memcheck option */
+    if (cli_getopt(argc, argv, "--crt-memcheck", NULL) == 0)
+    {
+        opts->crt_memcheck = true;
     }
 
     /* Get --trace-times option */
@@ -537,7 +546,8 @@ static int _enter_kernel(
                 final_options.base.rootfs,
                 terr,
                 final_options.base.unhandled_syscall_enosys,
-                sizeof(terr)) != 0)
+                sizeof(terr),
+                final_options.base.crt_memcheck) != 0)
         {
             snprintf(err, err_size, "init_kernel_args failed: %s", terr);
             ERAISE(-EINVAL);

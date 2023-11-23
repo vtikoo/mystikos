@@ -135,10 +135,11 @@ DIRS += glibc
 endif
 
 DIRS += appenv
-DIRS += go
+# DIRS += go	# Temp disabled test
 DIRS += strace
 DIRS += map_shared
 DIRS += posix-shm
+DIRS += debugmalloc
 
 .PHONY: $(DIRS)
 

@@ -81,7 +81,7 @@ pipeline {
                 axes {
                     axis {
                         name 'OS_VERSION'
-                        values '18.04', '20.04'
+                        values '20.04'
                     }
                     axis {
                         name 'TEST_PIPELINE'
@@ -90,31 +90,7 @@ pipeline {
                     }
                     axis {
                         name 'VM_GENERATION'
-                        values 'v3', 'v2'
-                    }
-                }
-                excludes {
-                    // Skip builds with Ubuntu 18.04 and v3
-                    exclude {
-                        axis {
-                            name 'OS_VERSION'
-                            values '18.04'
-                        }
-                        axis {
-                            name 'VM_GENERATION'
-                            values 'v3'
-                        }
-                    }
-                    // Skip builds with Ubuntu 20.04 and v2
-                    exclude {
-                        axis {
-                            name 'OS_VERSION'
-                            values '20.04'
-                        }
-                        axis {
-                            name 'VM_GENERATION'
-                            values 'v2'
-                        }
+                        values 'v3'
                     }
                 }
                 stages {

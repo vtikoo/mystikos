@@ -65,6 +65,8 @@ int myst_mprotect(const void* addr, const size_t len, const int prot);
 
 int myst_get_total_ram(size_t* size);
 
+int myst_get_peak_memory_usage(long* size);
+
 int myst_get_free_ram(size_t* size);
 
 int myst_release_process_mappings(pid_t pid);
@@ -133,5 +135,8 @@ size_t myst_mman_backing_file_size(mman_file_handle_t* file_handle);
 
 const char* myst_mman_prot_to_string(int prot);
 const char* myst_mman_flags_to_string(int flags);
+
+/* return 0 if all memory in this range has the given protection */
+int myst_maccess(const void* addr, size_t length, int prot);
 
 #endif /* _MYST_MMANUTILS_H */

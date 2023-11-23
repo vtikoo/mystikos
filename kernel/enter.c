@@ -726,11 +726,16 @@ static void _print_boottime(void)
     }
 }
 
+#define COLOR_YELLOW "\e[33m"
+#define COLOR_RESET "\e[0m"
+
 /* the main thread is the only thread that is not on the heap */
 static myst_thread_t _main_thread;
 
 #pragma GCC push_options
+#ifndef MYST_ENABLE_GCOV
 #pragma GCC optimize "-O2"
+#endif
 int myst_enter_kernel(myst_kernel_args_t* args)
 {
     int ret = 0;
@@ -930,7 +935,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* Run the main program: wait for SYS_exit to perform longjmp() */
     if (myst_setjmp(&thread->jmpbuf) == 0)
     {
-        myst_crt_args_t crt_args = {args->wanted_secrets};
+        myst_crt_args_t crt_args = {args->wanted_secrets, args->crt_memcheck};
         /* enter the C-runtime on the target thread descriptor */
         if ((tmp_ret = myst_exec(
                  thread,
@@ -974,6 +979,17 @@ int myst_enter_kernel(myst_kernel_args_t* args)
          * call to myst_set_fsbase().
          */
         myst_set_fsbase(thread->target_td);
+
+        /* print out the peak memory usage seen during an application's lifetime at shutdown */
+        if (__myst_kernel_args.perf)
+        {
+            long size;
+            myst_get_peak_memory_usage(&size);
+            myst_eprintf(COLOR_YELLOW "\n");
+            myst_eprintf(
+                "=== exit: peak memory usage: %5.3lfm\n", (double)size / 1048576.0);
+            myst_eprintf(COLOR_RESET "\n");
+        }
 
         if (__myst_kernel_args.perf)
             myst_print_syscall_times("kernel shutdown", SIZE_MAX);

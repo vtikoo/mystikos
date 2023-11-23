@@ -3,15 +3,14 @@ APPROVED_AUTHORS = [
     'asvrada',
     'bodzhang',
     'CyanDevs',
-    'Francis-Liu',
     'jxyang',
     'mikbras',
     'mingweishih',
-    'RRathna',
     'paulcallen',
     'radhikaj',
     'salsal97',
-    'vtikoo'
+    'vtikoo',
+    'justanotherminh'
 ]
 
 // Do not trigger a full CI build if changes contain only these ignored files
@@ -37,6 +36,18 @@ IGNORED_FILES = [
     'README.md',
     'VERSION'
 ]
+
+/* Prevent Branch Indexing from triggering a build. This is necessary because
+   Branch Indexing will trigger a build for every Pull Request in the repository
+   every time it occurs and waste resources.
+*/
+build_cause = currentBuild.getBuildCauses().toString()
+if (build_cause.contains('BranchIndexingCause')) {
+  currentBuild.result = 'ABORTED'
+  error("Branch Indexing is not allowed. Please trigger manually or via a pull request.")
+} else {
+  println("Build cause: ${build_cause}")
+}
 
 pipeline {
     agent {
@@ -211,7 +222,7 @@ pipeline {
                 axes {
                     axis {
                         name 'OS_VERSION'
-                        values '18.04', '20.04'
+                        values '20.04'
                     }
                     axis {
                         name 'TEST_PIPELINE'

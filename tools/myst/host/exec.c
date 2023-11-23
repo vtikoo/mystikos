@@ -458,6 +458,9 @@ Options:\n\
                             --strace-filter-pid=101\n\
     --syslog-level=<emerg|alert|crit|err|warn|notice|info|debug>\n\
                          -- Configure kernel's system logger level \n\
+    --perf               -- reports time taken to boot and on shutdown \n\
+                            reports time spent on each syscall \n\
+                            reports peak memory usage of the application \n\
 \n"
 
 int exec_action(int argc, const char* argv[], const char* envp[])
@@ -510,6 +513,12 @@ int exec_action(int argc, const char* argv[], const char* envp[])
             cli_getopt(&argc, argv, "--etrace", NULL) == 0)
         {
             options.trace_errors = true;
+        }
+
+        /* Get --crt-memcheck option */
+        if (cli_getopt(&argc, argv, "--crt-memcheck", NULL) == 0)
+        {
+            options.crt_memcheck = true;
         }
 
         /* Get --trace-times option */
